@@ -14,9 +14,9 @@ Preferences prefs;
 
 int cnt_http = 0;
 bool refresh_http = true;
-int confirmed = 0;
-int recovered = 0;
-int deaths = 0;
+long confirmed = 0;
+long recovered = 0;
+long deaths = 0;
 String scope = "World";
 String path = "/totals";
 int country_index = 0;
@@ -185,7 +185,7 @@ void store_trend(int value) {
   strcat(trend, "_trend");
 
   prefs.begin(schema);
-  int prev_value = prefs.getInt(schema, 0);
+  int prev_value = prefs.getLong(schema, 0);
     
   if (prev_value == value) {
     Serial.println("No change");
@@ -201,7 +201,7 @@ void store_trend(int value) {
     return;
   } 
   
-  prefs.putInt(schema, value);
+  prefs.putLong(schema, value);
 
   int diff = value - prev_value;
 
