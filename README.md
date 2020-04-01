@@ -22,15 +22,6 @@ Copy secrets.h.template to secrets.h and update with your Wifi credentials
 
 Register an account at rapidapi.com and make sure the API Key is added in secrets.h
 
-## Connecting to TLS/SSL API's
+now you should be able to compile the sketch and upload it to your M5
 
-as most api's use https nowadays, we need a way to add the Root CA to our http_client
-
-I used openssl to get the public key like this
-```
-openssl s_client -connect covid-19-data.p.rapidapi.com:443 -showcerts
-```
-
-and then I copied the first one (with *.p.rapidapi.com as the common name)
-as you can see in the secrets.h.template root_ca variable
 
