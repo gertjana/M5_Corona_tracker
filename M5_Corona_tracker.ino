@@ -7,6 +7,8 @@
 
 #define NR_COUNTRIES 5
 #define TREND_LENGTH 8
+#define TREND_FACTOR 16
+
 const int REFRESH_RATE = 10; //seconds
 const String countries[NR_COUNTRIES]  = {"gb","us","it", "es", "cn"};
 
@@ -17,16 +19,16 @@ bool refresh_http = true;
 long confirmed = 0;
 long recovered = 0;
 long deaths = 0;
-String scope = "World";
+String scope = "WORLD";
 String path = "/totals";
 int country_index = 0;
 StaticJsonDocument<300> doc;
 int trend_int[TREND_LENGTH];
-int TREND_FACTOR = 8;
 
 void setup(void) {
   Serial.begin(115200);
   while(!Serial);    // wait until we have serial running
+  delay(100);
   Serial.println("Corona Tracker");
     
   M5.begin(true, false, true); //lcd + serial enabled, sd card disabled
@@ -76,7 +78,6 @@ void update_display() {
 
   M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
   M5.Lcd.setTextFont(4);
-  scope.toUpperCase();
   M5.Lcd.println(String("Corona Tracker - ") + scope);
 
   M5.Lcd.setTextFont(2);
@@ -100,7 +101,7 @@ void update_display() {
   M5.Lcd.setTextFont(7);
   M5.Lcd.println(deaths);
 
-  if (scope.equalsIgnoreCase("World")) {
+//  if (scope.equalsIgnoreCase("World")) {
     for (int i=0;i<TREND_LENGTH;i++) {
       int val = trend_int[i]/TREND_FACTOR;
       if (val > 150) {val = 150;}
@@ -121,11 +122,14 @@ void update_display() {
     M5.Lcd.println("new cases");
     
     M5.Lcd.setCursor(205,85);
+    M5.Lcd.println(" 2k");
+
+    M5.Lcd.setCursor(205,147);
     M5.Lcd.println(" 1k");
 
     M5.Lcd.setCursor(205,210);
     M5.Lcd.println(" 0");
-  }
+ // }
 }
 
 void parse(String payload) {
@@ -142,11 +146,12 @@ void read_buttons() {
     path = "/totals";
     refresh_http = true;
   } else if (M5.BtnB.read()) {
-    scope = "nl";
+    scope = "NL";
     path = "/country/code?code=nl";
     refresh_http = true;
   } else if (M5.BtnC.read()) {
     scope = String(countries[country_index]);
+    scope.toUpperCase();
     path = String("/country/code?code=") + countries[country_index];
     country_index += 1;
     if (country_index >= NR_COUNTRIES) {
@@ -175,8 +180,6 @@ void get_http() {
 }
 
 void store_trend(int value) {
-  Serial.println(scope);
-
   char schema[sizeof(scope)];
   scope.toCharArray(schema, sizeof(scope));
   
@@ -188,15 +191,6 @@ void store_trend(int value) {
   int prev_value = prefs.getLong(schema, 0);
     
   if (prev_value == value) {
-    Serial.println("No change");
-
-    prefs.end();
-    prefs.begin(trend);
-
-    char trend_buffer[TREND_LENGTH*2];
-    prefs.getBytes(trend, trend_buffer, TREND_LENGTH*2);
-    trend_to_integer(trend_buffer, trend_int);
-    
     prefs.end();
     return;
   } 
@@ -225,31 +219,7 @@ void store_trend(int value) {
 }
 
 void trend_to_integer(char t[], int trend[]) {
-  //print_array("Trend", t, TREND_LENGTH*2);  
   for (int i=0;i<TREND_LENGTH;i++) {
     trend[i] = (t[i*2] << 8) + t[i*2+1];  
   }
-  //print_array_int("Trend", trend, TREND_LENGTH*2);  
 }
-
-// void print_array(char name[], char data[], int len) {
-//   Serial.print(name);
-//   Serial.print(": ");
-//   for (int i=0; i<len; i++) {
-//     if (data[i]<0x10) {Serial.print("0");}
-//     Serial.print(data[i],HEX);
-//     Serial.print(" ");
-//   }
-//   Serial.println("");
-// }
-
-// void print_array_int(char name[], int a[], int len) {
-//   int l = len/2;
-//   Serial.print(name);
-//   Serial.print(": ");
-//   for (int i=0; i<l; i++) {
-//     Serial.print(a[i]);
-//     if (i != l-1) { Serial.print(", "); }
-//   }
-//   Serial.println("");  
-// }
