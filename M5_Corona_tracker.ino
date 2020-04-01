@@ -100,8 +100,6 @@ void update_display() {
   M5.Lcd.setTextFont(7);
   M5.Lcd.println(deaths);
 
-  Serial.println(scope.equalsIgnoreCase("World"));
-  Serial.println(scope.equalsIgnoreCase(String("World")));
   if (scope.equalsIgnoreCase("World")) {
     for (int i=0;i<TREND_LENGTH;i++) {
       int val = trend_int[i]/TREND_FACTOR;
@@ -186,23 +184,29 @@ void store_trend(int value) {
   strcpy(trend, schema);
   strcat(trend, "_trend");
 
-  prefs.begin("trend");
+  prefs.begin(schema);
   int prev_value = prefs.getInt(schema, 0);
     
   if (prev_value == value) {
     Serial.println("No change");
+
+    prefs.end();
+    prefs.begin(trend);
 
     char trend_buffer[TREND_LENGTH*2];
     prefs.getBytes(trend, trend_buffer, TREND_LENGTH*2);
     trend_to_integer(trend_buffer, trend_int);
     
     prefs.end();
-    //return;
+    return;
   } 
   
   prefs.putInt(schema, value);
 
   int diff = value - prev_value;
+
+  prefs.end();
+  prefs.begin(trend);
 
   char trend_buffer[TREND_LENGTH*2];
   prefs.getBytes(trend, trend_buffer, TREND_LENGTH*2);
@@ -221,31 +225,31 @@ void store_trend(int value) {
 }
 
 void trend_to_integer(char t[], int trend[]) {
-  print_array("Trend", t, TREND_LENGTH*2);  
+  //print_array("Trend", t, TREND_LENGTH*2);  
   for (int i=0;i<TREND_LENGTH;i++) {
     trend[i] = (t[i*2] << 8) + t[i*2+1];  
   }
-  print_array_int("Trend", trend, TREND_LENGTH*2);  
+  //print_array_int("Trend", trend, TREND_LENGTH*2);  
 }
 
-void print_array(char name[], char data[], int len) {
-  Serial.print(name);
-  Serial.print(": ");
-  for (int i=0; i<len; i++) {
-    if (data[i]<0x10) {Serial.print("0");}
-    Serial.print(data[i],HEX);
-    Serial.print(" ");
-  }
-  Serial.println("");
-}
+// void print_array(char name[], char data[], int len) {
+//   Serial.print(name);
+//   Serial.print(": ");
+//   for (int i=0; i<len; i++) {
+//     if (data[i]<0x10) {Serial.print("0");}
+//     Serial.print(data[i],HEX);
+//     Serial.print(" ");
+//   }
+//   Serial.println("");
+// }
 
-void print_array_int(char name[], int a[], int len) {
-  int l = len/2;
-  Serial.print(name);
-  Serial.print(": ");
-  for (int i=0; i<l; i++) {
-    Serial.print(a[i]);
-    if (i != l-1) { Serial.print(", "); }
-  }
-  Serial.println("");  
-}
+// void print_array_int(char name[], int a[], int len) {
+//   int l = len/2;
+//   Serial.print(name);
+//   Serial.print(": ");
+//   for (int i=0; i<l; i++) {
+//     Serial.print(a[i]);
+//     if (i != l-1) { Serial.print(", "); }
+//   }
+//   Serial.println("");  
+// }
