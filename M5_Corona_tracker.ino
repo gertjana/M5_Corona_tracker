@@ -9,7 +9,7 @@
 #define TREND_LENGTH 8
 #define TREND_FACTOR 16
 
-const int REFRESH_RATE = 10; //seconds
+const int REFRESH_RATE = 60; //seconds
 const String countries[NR_COUNTRIES]  = {"gb","us","it", "es", "cn"};
 
 Preferences prefs;
@@ -101,35 +101,38 @@ void update_display() {
   M5.Lcd.setTextFont(7);
   M5.Lcd.println(deaths);
 
-//  if (scope.equalsIgnoreCase("World")) {
-    for (int i=0;i<TREND_LENGTH;i++) {
-      int val = trend_int[i]/TREND_FACTOR;
-      if (val > 150) {val = 150;}
-      int x = i*10+230;
-      int w = 8;
-      int y = 220-val;
-      int h = val;
-      M5.Lcd.drawRect(x, y, w, h, TFT_ORANGE);
-      M5.Lcd.fillRect(x, y, w, h, TFT_ORANGE);
-    }
-    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-    M5.Lcd.drawLine(230,70,230,220, TFT_WHITE);
-    M5.Lcd.drawLine(230,220,310,220, TFT_WHITE);
+  for (int i=0;i<TREND_LENGTH;i++) {
+    int val = trend_int[i]/TREND_FACTOR;
+    double log_val = val==0 ? 0 : log10(val)*30;
+    int x = i*10+230;
+    int y = 220-log_val;
 
-    M5.Lcd.setTextFont(2);
+    M5.Lcd.drawRect(x, y, 8, log_val, TFT_ORANGE);
+    M5.Lcd.fillRect(x, y, 8, log_val, TFT_ORANGE);
+  }
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+  M5.Lcd.drawLine(230,90,230,220, TFT_WHITE);
+  M5.Lcd.drawLine(230,220,310,220, TFT_WHITE);
 
-    M5.Lcd.setCursor(230, 222);
-    M5.Lcd.println("new cases");
-    
-    M5.Lcd.setCursor(205,85);
-    M5.Lcd.println(" 2k");
+  M5.Lcd.setTextFont(2);
 
-    M5.Lcd.setCursor(205,147);
-    M5.Lcd.println(" 1k");
+  M5.Lcd.setCursor(230, 222);
+  M5.Lcd.println("new cases");
+  
+  M5.Lcd.setCursor(205,90);
+  M5.Lcd.println("10k");
 
-    M5.Lcd.setCursor(205,210);
-    M5.Lcd.println(" 0");
- // }
+  M5.Lcd.setCursor(205,120);
+  M5.Lcd.println(" 1k");
+
+  M5.Lcd.setCursor(205,150);
+  M5.Lcd.println("100");
+
+  M5.Lcd.setCursor(205,180);
+  M5.Lcd.println(" 10");
+
+  M5.Lcd.setCursor(205,210);
+  M5.Lcd.println("  0");
 }
 
 void parse(String payload) {
@@ -191,7 +194,14 @@ void store_trend(int value) {
   int prev_value = prefs.getLong(schema, 0);
     
   if (prev_value == value) {
-    prefs.end();
+    prefs.end(); // schema
+    prefs.begin(trend);
+
+    char trend_buffer[TREND_LENGTH*2];
+    prefs.getBytes(trend, trend_buffer, TREND_LENGTH*2);    
+    trend_to_integer(trend_buffer, trend_int);
+
+    prefs.end(); // trend
     return;
   } 
   
@@ -199,7 +209,7 @@ void store_trend(int value) {
 
   int diff = value - prev_value;
 
-  prefs.end();
+  prefs.end(); // schema
   prefs.begin(trend);
 
   char trend_buffer[TREND_LENGTH*2];
@@ -215,7 +225,7 @@ void store_trend(int value) {
 
   prefs.putBytes(trend, &trend_buffer, TREND_LENGTH*2);
 
-  prefs.end();
+  prefs.end(); // trend
 }
 
 void trend_to_integer(char t[], int trend[]) {
