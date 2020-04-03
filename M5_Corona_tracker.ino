@@ -1,7 +1,7 @@
 #include <M5Stack.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include "ArduinoJson.h"
+#include <ArduinoJson.h>
 #include "secrets.h"
 #include <Preferences.h>
 
@@ -16,9 +16,12 @@ Preferences prefs;
 
 int cnt_http = 0;
 bool refresh_http = true;
+
 long confirmed = 0;
 long recovered = 0;
+long critical = 0;
 long deaths = 0;
+
 String scope = "WORLD";
 String path = "/totals";
 int country_index = 0;
@@ -107,8 +110,8 @@ void update_display() {
     int x = i*10+230;
     int y = 220-log_val;
 
-    M5.Lcd.drawRect(x, y, 8, log_val, TFT_ORANGE);
-    M5.Lcd.fillRect(x, y, 8, log_val, TFT_ORANGE);
+    M5.Lcd.drawRect(x, y, 8, log_val, TFT_YELLOW);
+    M5.Lcd.fillRect(x, y, 8, log_val, TFT_YELLOW);
   }
   M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
   M5.Lcd.drawLine(230,90,230,220, TFT_WHITE);
@@ -140,6 +143,7 @@ void parse(String payload) {
   
   confirmed = doc[0]["confirmed"];
   recovered = doc[0]["recovered"];
+  critical = doc[0]["critical"];
   deaths = doc[0]["deaths"];
 }
 
