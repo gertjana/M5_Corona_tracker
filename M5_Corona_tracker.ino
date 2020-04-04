@@ -9,13 +9,17 @@
 #define TREND_LENGTH 8
 #define TREND_FACTOR 16
 
-const int REFRESH_RATE = 60; //seconds
+const int REFRESH_HTTP_RATE = 60; //seconds
+const int REFRESH_TOGGLE_RATE = 10; //seconds
 const String countries[NR_COUNTRIES]  = {"gb","us","it", "es", "cn"};
 
 Preferences prefs;
 
 int cnt_http = 0;
+int cnt_toggle = 0;
 bool refresh_http = true;
+bool refresh_display = true;
+bool toggle = false;
 
 long confirmed = 0;
 long recovered = 0;
@@ -55,10 +59,18 @@ void loop() {
   read_buttons();
   
   cnt_http += 1;
+  cnt_toggle += 1;
+
   
-  if (cnt_http > 10*REFRESH_RATE) {
+  if (cnt_http > 10*REFRESH_HTTP_RATE) {
     cnt_http = 0;
     refresh_http = true;
+  }
+
+  if (cnt_toggle > 10*REFRESH_TOGGLE_RATE) {
+    cnt_toggle = 0;
+    refresh_display = true;
+    toggle = !toggle;
   }
 
   if (refresh_http) {
@@ -68,10 +80,15 @@ void loop() {
   
     store_trend(confirmed);
   
-    update_display();
+    refresh_display = true;
 
   }
-    
+  
+  if (refresh_display) {
+    refresh_display = false;
+    update_display();
+  }
+
   delay(100); //milliseconds
 }
 
@@ -97,12 +114,21 @@ void update_display() {
   M5.Lcd.setTextFont(7);
   M5.Lcd.println(recovered);
   
-  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-  M5.Lcd.setTextFont(2);
-  M5.Lcd.println("deaths");
-  M5.Lcd.setTextColor(TFT_RED,TFT_BLACK);
-  M5.Lcd.setTextFont(7);
-  M5.Lcd.println(deaths);
+  if (toggle) {
+    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("deaths");
+    M5.Lcd.setTextColor(TFT_RED,TFT_BLACK);
+    M5.Lcd.setTextFont(7);
+    M5.Lcd.println(deaths);
+  } else {
+    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("critical");
+    M5.Lcd.setTextColor(TFT_ORANGE,TFT_BLACK);
+    M5.Lcd.setTextFont(7);
+    M5.Lcd.println(critical);
+  }
 
   for (int i=0;i<TREND_LENGTH;i++) {
     int val = trend_int[i]/TREND_FACTOR;
