@@ -20,7 +20,9 @@ make sure M5-Stack-Core-ESP32 is selected as the board and the correct port sele
 
 Copy secrets.h.template to secrets.h and update with your Wifi credentials
 
-Register an account at rapidapi.com and make sure the API Key is added in secrets.h
+Register an account at rapidapi.com and subscribe to the "COVID-19 Data" API
+
+make sure the API Key is added in secrets.h
 
 now you should be able to compile the sketch and upload it to your M5
 
