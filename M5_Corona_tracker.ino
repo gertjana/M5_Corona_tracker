@@ -56,7 +56,6 @@ void setup(void) {
 
 }
 
-
 void loop() {
   M5.update();
 
@@ -284,6 +283,7 @@ void trend_to_integer(char t[], int trend[]) {
 void draw_sprite(bool http_error) {
   spr.createSprite(32, 32);
   spr.fillSprite(TFT_BLACK);
+  
   if (http_error) {
     spr.drawLine(0,31,31,31, TFT_RED);
     spr.drawLine(31,31,15,0, TFT_RED);
