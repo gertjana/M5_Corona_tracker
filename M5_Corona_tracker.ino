@@ -5,21 +5,24 @@
 #include "secrets.h"
 #include <Preferences.h>
 
-#define NR_COUNTRIES 5
+#define NR_COUNTRIES 6
 #define TREND_LENGTH 8
 #define TREND_FACTOR 16
 
 const int REFRESH_HTTP_RATE = 60; //seconds
 const int REFRESH_TOGGLE_RATE = 10; //seconds
-const String countries[NR_COUNTRIES]  = {"gb","us","it", "es", "cn"};
+const String countries[NR_COUNTRIES]  = {"nl", "gb","us","it", "es", "cn"};
 
 Preferences prefs;
+
+TFT_eSprite spr = TFT_eSprite(&M5.Lcd);
 
 int cnt_http = 0;
 int cnt_toggle = 0;
 bool refresh_http = true;
 bool refresh_display = true;
 bool toggle = false;
+bool http_error = false;
 
 long confirmed = 0;
 long recovered = 0;
@@ -40,7 +43,8 @@ void setup(void) {
     
   M5.begin(true, false, true); //lcd + serial enabled, sd card disabled
   M5.Power.begin();
-  
+
+
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -162,6 +166,8 @@ void update_display() {
 
   M5.Lcd.setCursor(205,210);
   M5.Lcd.println("  0");
+
+  draw_sprite(http_error);
 }
 
 void parse(String payload) {
@@ -177,19 +183,29 @@ void read_buttons() {
   if (M5.BtnA.read()) {
     scope = "World";
     path = "/totals";
+    country_index = 0;
     refresh_http = true;
   } else if (M5.BtnB.read()) {
-    scope = "NL";
-    path = "/country/code?code=nl";
-    refresh_http = true;
-  } else if (M5.BtnC.read()) {
+    if (!scope.equalsIgnoreCase("World")) {
+      country_index -= 1;
+      if (country_index < 0) {
+        country_index = NR_COUNTRIES-1;
+      }
+    }
     scope = String(countries[country_index]);
     scope.toUpperCase();
     path = String("/country/code?code=") + countries[country_index];
-    country_index += 1;
-    if (country_index >= NR_COUNTRIES) {
-      country_index = 0;
+    refresh_http = true;
+  } else if (M5.BtnC.read()) {
+    if (!scope.equalsIgnoreCase("World")) {
+      country_index += 1;
+      if (country_index >= NR_COUNTRIES) {
+        country_index = 0;
+      }
     }
+    scope = String(countries[country_index]);
+    scope.toUpperCase();
+    path = String("/country/code?code=") + countries[country_index];
     refresh_http = true;
   }
 }
@@ -206,8 +222,9 @@ void get_http() {
     if (httpCode > 0) {
       String payload = http.getString();
       parse(payload);
+      http_error = false;
     } else {
-      Serial.println("Error on HTTP request");
+      http_error = true;
     }
     http.end();
 }
@@ -262,4 +279,23 @@ void trend_to_integer(char t[], int trend[]) {
   for (int i=0;i<TREND_LENGTH;i++) {
     trend[i] = (t[i*2] << 8) + t[i*2+1];  
   }
+}
+
+void draw_sprite(bool http_error) {
+  spr.createSprite(32, 32);
+  spr.fillSprite(TFT_BLACK);
+  if (http_error) {
+    spr.drawLine(0,31,31,31, TFT_RED);
+    spr.drawLine(31,31,15,0, TFT_RED);
+    spr.drawLine(15,0,0,31, TFT_RED);
+    spr.fillRect(14,25,3,3, TFT_RED);
+    spr.fillRect(14,10,3,12, TFT_RED);    
+  } else {
+    spr.drawLine(4,15,12,23, TFT_GREEN);
+    spr.drawLine(12,23,28,7, TFT_GREEN);
+    spr.drawLine(4,14,12,22, TFT_GREEN);
+    spr.drawLine(12,22,28,6, TFT_GREEN);
+  }
+
+  spr.pushSprite(288,0, TFT_BLACK);
 }
