@@ -10,7 +10,8 @@
 #define TREND_FACTOR 16
 
 const int REFRESH_HTTP_RATE = 60; //seconds
-const int REFRESH_TOGGLE_RATE = 10; //seconds
+const int REFRESH_TOGGLE_RATE = 3; //seconds
+const int REFRESH_COUNTRY_RATE = 12; //seconds
 const String countries[NR_COUNTRIES]  = {"nl", "gb","us","it", "es", "cn"};
 
 Preferences prefs;
@@ -19,9 +20,14 @@ TFT_eSprite spr = TFT_eSprite(&M5.Lcd);
 
 int cnt_http = 0;
 int cnt_toggle = 0;
+int cnt_country = 0;
+
 bool refresh_http = true;
 bool refresh_display = true;
-bool toggle = false;
+
+bool toggle_crit_and_deaths = false;
+bool toggle_trend_display = true;
+
 bool http_error = false;
 
 long confirmed = 0;
@@ -63,8 +69,8 @@ void loop() {
   
   cnt_http += 1;
   cnt_toggle += 1;
+  cnt_country += 1;
 
-  
   if (cnt_http > 10*REFRESH_HTTP_RATE) {
     cnt_http = 0;
     refresh_http = true;
@@ -73,7 +79,20 @@ void loop() {
   if (cnt_toggle > 10*REFRESH_TOGGLE_RATE) {
     cnt_toggle = 0;
     refresh_display = true;
-    toggle = !toggle;
+    toggle_crit_and_deaths = !toggle_crit_and_deaths;
+  }
+
+  if (cnt_country > 10*REFRESH_COUNTRY_RATE) {
+    cnt_country = 0;
+    if (!scope.equalsIgnoreCase("world")) {
+      inc_country();
+      scope = String(countries[country_index]);
+      scope.toUpperCase();
+      path = String("/country/code?code=") + countries[country_index];
+      cnt_toggle = 0;
+      toggle_crit_and_deaths = false;
+      refresh_http = true;
+    }
   }
 
   if (refresh_http) {
@@ -99,74 +118,13 @@ void update_display() {
   M5.Lcd.fillScreen(TFT_BLACK); 
   M5.Lcd.setCursor(0, 0, 2);
 
-  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-  M5.Lcd.setTextFont(4);
-  M5.Lcd.println(String("Corona Tracker - ") + scope);
+  draw_header();
 
-  M5.Lcd.setTextFont(2);
-  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-  M5.Lcd.println("confirmed");
-  M5.Lcd.setTextColor(TFT_YELLOW,TFT_BLACK);
-  M5.Lcd.setTextFont(7);
-  M5.Lcd.println(confirmed);
-  
-  M5.Lcd.setTextFont(2);
-  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-  M5.Lcd.println("recovered");
-  M5.Lcd.setTextColor(TFT_GREEN,TFT_BLACK);
-  M5.Lcd.setTextFont(7);
-  M5.Lcd.println(recovered);
-  
-  if (toggle) {
-    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-    M5.Lcd.setTextFont(2);
-    M5.Lcd.println("deaths");
-    M5.Lcd.setTextColor(TFT_RED,TFT_BLACK);
-    M5.Lcd.setTextFont(7);
-    M5.Lcd.println(deaths);
-  } else {
-    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-    M5.Lcd.setTextFont(2);
-    M5.Lcd.println("critical");
-    M5.Lcd.setTextColor(TFT_ORANGE,TFT_BLACK);
-    M5.Lcd.setTextFont(7);
-    M5.Lcd.println(critical);
+  draw_numbers();
+
+  if (toggle_trend_display) {
+      draw_trend();
   }
-
-  for (int i=0;i<TREND_LENGTH;i++) {
-    int val = trend_int[i]/TREND_FACTOR;
-    double log_val = val==0 ? 0 : log10(val)*30;
-    int x = i*10+230;
-    int y = 220-log_val;
-
-    M5.Lcd.drawRect(x, y, 8, log_val, TFT_YELLOW);
-    M5.Lcd.fillRect(x, y, 8, log_val, TFT_YELLOW);
-  }
-  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
-  M5.Lcd.drawLine(230,90,230,220, TFT_WHITE);
-  M5.Lcd.drawLine(230,220,310,220, TFT_WHITE);
-
-  M5.Lcd.setTextFont(2);
-
-  M5.Lcd.setCursor(230, 222);
-  M5.Lcd.println("new cases");
-  
-  M5.Lcd.setCursor(205,90);
-  M5.Lcd.println("10k");
-
-  M5.Lcd.setCursor(205,120);
-  M5.Lcd.println(" 1k");
-
-  M5.Lcd.setCursor(205,150);
-  M5.Lcd.println("100");
-
-  M5.Lcd.setCursor(205,180);
-  M5.Lcd.println(" 10");
-
-  M5.Lcd.setCursor(205,210);
-  M5.Lcd.println("  0");
-
-  draw_sprite(http_error);
 }
 
 void parse(String payload) {
@@ -182,30 +140,23 @@ void read_buttons() {
   if (M5.BtnA.read()) {
     scope = "World";
     path = "/totals";
-    country_index = 0;
     refresh_http = true;
+    cnt_toggle = 0;
+    toggle_crit_and_deaths = true;
   } else if (M5.BtnB.read()) {
-    if (!scope.equalsIgnoreCase("World")) {
-      country_index -= 1;
-      if (country_index < 0) {
-        country_index = NR_COUNTRIES-1;
-      }
+    if (!scope.equalsIgnoreCase("world")) {
+      inc_country();
     }
     scope = String(countries[country_index]);
     scope.toUpperCase();
     path = String("/country/code?code=") + countries[country_index];
     refresh_http = true;
+    cnt_toggle = 0;
+    toggle_crit_and_deaths = false;
+    cnt_country = 0;
   } else if (M5.BtnC.read()) {
-    if (!scope.equalsIgnoreCase("World")) {
-      country_index += 1;
-      if (country_index >= NR_COUNTRIES) {
-        country_index = 0;
-      }
-    }
-    scope = String(countries[country_index]);
-    scope.toUpperCase();
-    path = String("/country/code?code=") + countries[country_index];
-    refresh_http = true;
+    toggle_trend_display = !toggle_trend_display;
+    refresh_display = true;
   }
 }
 
@@ -278,6 +229,87 @@ void trend_to_integer(char t[], int trend[]) {
   for (int i=0;i<TREND_LENGTH;i++) {
     trend[i] = (t[i*2] << 8) + t[i*2+1];  
   }
+}
+
+void inc_country() {
+  country_index += 1;
+  if (country_index >= NR_COUNTRIES) {
+    country_index = 0;
+  }
+}
+
+void draw_header() {
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+  M5.Lcd.setTextFont(4);
+  M5.Lcd.println(String("Corona Tracker - ") + scope);
+  draw_sprite(http_error);
+}
+
+void draw_numbers() {
+  M5.Lcd.setTextFont(2);
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+  M5.Lcd.println("confirmed");
+  M5.Lcd.setTextColor(TFT_YELLOW,TFT_BLACK);
+  M5.Lcd.setTextFont(7);
+  M5.Lcd.println(confirmed);
+  
+  M5.Lcd.setTextFont(2);
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+  M5.Lcd.println("recovered");
+  M5.Lcd.setTextColor(TFT_GREEN,TFT_BLACK);
+  M5.Lcd.setTextFont(7);
+  M5.Lcd.println(recovered);
+  
+  if (toggle_crit_and_deaths) {
+    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("deaths");
+    M5.Lcd.setTextColor(TFT_RED,TFT_BLACK);
+    M5.Lcd.setTextFont(7);
+    M5.Lcd.println(deaths);
+  } else {
+    M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+    M5.Lcd.setTextFont(2);
+    M5.Lcd.println("critical");
+    M5.Lcd.setTextColor(TFT_ORANGE,TFT_BLACK);
+    M5.Lcd.setTextFont(7);
+    M5.Lcd.println(critical);
+  }
+}
+
+void draw_trend() {
+  for (int i=0;i<TREND_LENGTH;i++) {
+    int val = trend_int[i]/TREND_FACTOR;
+    double log_val = val==0 ? 0 : log10(val)*30;
+    int x = i*10+230;
+    int y = 220-log_val;
+
+    M5.Lcd.drawRect(x, y, 8, log_val, TFT_YELLOW);
+    M5.Lcd.fillRect(x, y, 8, log_val, TFT_YELLOW);
+  }
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_BLACK);
+  M5.Lcd.drawLine(230,90,230,220, TFT_WHITE);
+  M5.Lcd.drawLine(230,220,310,220, TFT_WHITE);
+
+  M5.Lcd.setTextFont(2);
+
+  M5.Lcd.setCursor(230, 222);
+  M5.Lcd.println("new cases");
+  
+  M5.Lcd.setCursor(205,90);
+  M5.Lcd.println("10k");
+
+  M5.Lcd.setCursor(205,120);
+  M5.Lcd.println(" 1k");
+
+  M5.Lcd.setCursor(205,150);
+  M5.Lcd.println("100");
+
+  M5.Lcd.setCursor(205,180);
+  M5.Lcd.println(" 10");
+
+  M5.Lcd.setCursor(205,210);
+  M5.Lcd.println("  0");
 }
 
 void draw_sprite(bool http_error) {
